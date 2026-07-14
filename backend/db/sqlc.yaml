@@ -50,3 +50,8 @@ sql:
               import: "database/sql"
               type: "NullInt32"
             nullable: true
+          - column: "activity_logs.card_id"
+            go_type:
+              import: "github.com/google/uuid"
+              type: "NullUUID"
+            nullable: true

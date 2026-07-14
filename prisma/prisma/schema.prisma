@@ -28,7 +28,8 @@ model User {
   workspaces    WorkspaceMember[]
   refreshTokens RefreshToken[]
   comments      Comment[]
-  attachments   Attachment[]
+  attachments Attachment[]
+  activities  ActivityLog[]
 
   @@map("users")
 }
@@ -118,9 +119,9 @@ model Board {
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz()
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz()
 
-  // Relations
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   lists     List[]
+  activities ActivityLog[]
 
   @@index([workspaceId])
   @@map("boards")
@@ -163,6 +164,7 @@ model Card {
   list        List         @relation(fields: [listId], references: [id], onDelete: Cascade)
   comments    Comment[]
   attachments Attachment[]
+  activities  ActivityLog[]
 
   @@index([listId])
   @@map("cards")
@@ -207,4 +209,29 @@ model Attachment {
 
   @@index([cardId])
   @@map("attachments")
+}
+
+// ============================================
+// Activity Log - Audit trail for board/card events
+// ============================================
+model ActivityLog {
+  id           String   @id @default(uuid()) @db.Uuid
+  boardId      String   @map("board_id") @db.Uuid
+  cardId       String?  @map("card_id") @db.Uuid // Optional: if activity is specific to a card
+  userId       String   @map("user_id") @db.Uuid
+  action       String   @db.VarChar(50) // e.g., CREATED_CARD, MOVED_CARD, UPDATED_BOARD
+  entityType   String   @map("entity_type") @db.VarChar(50) // e.g., BOARD, LIST, CARD
+  entityTitle  String   @map("entity_title") @db.VarChar(255) // Keep name/title at the time of action
+  details      String?  @db.Text // JSON string containing changes (e.g., from List A to List B)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  // Relations
+  board Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  card  Card? @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([boardId])
+  @@index([cardId])
+  @@index([userId])
+  @@map("activity_logs")
 }

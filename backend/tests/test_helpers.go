@@ -134,6 +134,19 @@ type AttachmentDTO struct {
 	FileURL   string  `json:"file_url"`
 }
 
+// ActivityLogDTO matches the API activity log response.
+type ActivityLogDTO struct {
+	ID          string  `json:"id"`
+	BoardID     string  `json:"board_id"`
+	CardID      *string `json:"card_id,omitempty"`
+	UserID      string  `json:"user_id"`
+	UserName    string  `json:"user_name"`
+	Action      string  `json:"action"`
+	EntityType  string  `json:"entity_type"`
+	EntityTitle string  `json:"entity_title"`
+	Details     *string `json:"details,omitempty"`
+}
+
 // SetupTestApp creates a Fiber app with all routes for testing.
 func SetupTestApp(t *testing.T) *TestApp {
 	t.Helper()
@@ -156,6 +169,7 @@ func SetupTestApp(t *testing.T) *TestApp {
 	listService := service.NewListService(queries)
 	cardService := service.NewCardService(queries)
 	cardExtrasService := service.NewCardExtrasService(queries)
+	activityLogService := service.NewActivityLogService(queries)
 
 	authHandler := handler.NewAuthHandler(authService, cfg)
 	workspaceHandler := handler.NewWorkspaceHandler(workspaceService)
@@ -163,6 +177,7 @@ func SetupTestApp(t *testing.T) *TestApp {
 	listHandler := handler.NewListHandler(listService)
 	cardHandler := handler.NewCardHandler(cardService)
 	cardExtrasHandler := handler.NewCardExtrasHandler(cardExtrasService)
+	activityLogHandler := handler.NewActivityLogHandler(activityLogService)
 
 	// Register custom slug validation for workspace handler
 	v := validator.New()
@@ -245,6 +260,10 @@ func SetupTestApp(t *testing.T) *TestApp {
 	attachments := api.Group("/attachments", middleware.AuthMiddleware(cfg.JWTAccessSecret))
 	attachments.Post("/", cardExtrasHandler.CreateAttachment)
 	attachments.Delete("/:id", cardExtrasHandler.DeleteAttachment)
+
+	// Activity logs routes
+	boards.Get("/:boardId/activities", activityLogHandler.ListBoardActivities)
+	cards.Get("/:cardId/activities", activityLogHandler.ListCardActivities)
 
 	return &TestApp{App: app, Cfg: cfg}
 }

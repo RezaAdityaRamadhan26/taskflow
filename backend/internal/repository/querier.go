@@ -13,6 +13,7 @@ import (
 type Querier interface {
 	AddWorkspaceMember(ctx context.Context, arg AddWorkspaceMemberParams) (WorkspaceMember, error)
 	CountWorkspaceMembers(ctx context.Context, workspaceID uuid.UUID) (int64, error)
+	CreateActivityLog(ctx context.Context, arg CreateActivityLogParams) error
 	CreateAttachment(ctx context.Context, arg CreateAttachmentParams) (Attachment, error)
 	CreateBoard(ctx context.Context, arg CreateBoardParams) (Board, error)
 	CreateCard(ctx context.Context, arg CreateCardParams) (Card, error)
@@ -44,6 +45,8 @@ type Querier interface {
 	GetWorkspaceByID(ctx context.Context, id uuid.UUID) (Workspace, error)
 	GetWorkspaceBySlug(ctx context.Context, slug string) (Workspace, error)
 	GetWorkspaceMember(ctx context.Context, arg GetWorkspaceMemberParams) (WorkspaceMember, error)
+	ListActivityLogsByBoard(ctx context.Context, arg ListActivityLogsByBoardParams) ([]ListActivityLogsByBoardRow, error)
+	ListActivityLogsByCard(ctx context.Context, arg ListActivityLogsByCardParams) ([]ListActivityLogsByCardRow, error)
 	ListAttachmentsByCard(ctx context.Context, cardID uuid.UUID) ([]ListAttachmentsByCardRow, error)
 	ListBoardsByWorkspace(ctx context.Context, workspaceID uuid.UUID) ([]Board, error)
 	ListCardsByList(ctx context.Context, listID uuid.UUID) ([]Card, error)

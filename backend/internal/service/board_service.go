@@ -67,6 +67,8 @@ func (s *BoardService) CreateBoard(ctx context.Context, userID uuid.UUID, req dt
 		return nil, fmt.Errorf("failed to create board")
 	}
 
+	logActivity(s.queries, board.ID, nil, userID, "CREATED_BOARD", "BOARD", board.Name, "")
+
 	return mapBoardToDTO(board), nil
 }
 
@@ -162,6 +164,8 @@ func (s *BoardService) UpdateBoard(ctx context.Context, userID, boardID uuid.UUI
 		log.Printf("[ERROR] Failed to update board: %v", err)
 		return nil, fmt.Errorf("failed to update board")
 	}
+
+	logActivity(s.queries, boardID, nil, userID, "UPDATED_BOARD", "BOARD", updatedBoard.Name, "")
 
 	return mapBoardToDTO(updatedBoard), nil
 }

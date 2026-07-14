@@ -103,6 +103,10 @@ func (s *CardService) CreateCard(ctx context.Context, userID uuid.UUID, req dto.
 		return nil, fmt.Errorf("failed to create card")
 	}
 
+	// Fetch list to get board ID for logging
+	list, _ := s.queries.GetListByID(ctx, listID)
+	logActivity(s.queries, list.BoardID, &card.ID, userID, "CREATED_CARD", "CARD", card.Title, "")
+
 	return mapCardToDTO(card), nil
 }
 
@@ -200,6 +204,17 @@ func (s *CardService) UpdateCard(ctx context.Context, userID, cardID uuid.UUID, 
 		return nil, fmt.Errorf("failed to update card")
 	}
 
+	list, _ := s.queries.GetListByID(ctx, newListID)
+	action := "UPDATED_CARD"
+	details := ""
+	if card.ListID != newListID {
+		action = "MOVED_CARD"
+		oldList, _ := s.queries.GetListByID(ctx, card.ListID)
+		details = fmt.Sprintf("Moved from %s to %s", oldList.Name, list.Name)
+	}
+
+	logActivity(s.queries, list.BoardID, &updatedCard.ID, userID, action, "CARD", updatedCard.Title, details)
+
 	return mapCardToDTO(updatedCard), nil
 }
 
@@ -219,6 +234,9 @@ func (s *CardService) DeleteCard(ctx context.Context, userID, cardID uuid.UUID) 
 		log.Printf("[ERROR] Failed to delete card: %v", err)
 		return fmt.Errorf("failed to delete card")
 	}
+
+	list, _ := s.queries.GetListByID(ctx, card.ListID)
+	logActivity(s.queries, list.BoardID, nil, userID, "DELETED_CARD", "CARD", card.Title, "")
 
 	return nil
 }

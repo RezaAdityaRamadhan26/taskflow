@@ -100,6 +100,18 @@ func (ns NullRole) Value() (driver.Value, error) {
 	return string(ns.Role), nil
 }
 
+type ActivityLog struct {
+	ID          uuid.UUID      `json:"id"`
+	BoardID     uuid.UUID      `json:"board_id"`
+	CardID      uuid.NullUUID  `json:"card_id"`
+	UserID      uuid.UUID      `json:"user_id"`
+	Action      string         `json:"action"`
+	EntityType  string         `json:"entity_type"`
+	EntityTitle string         `json:"entity_title"`
+	Details     sql.NullString `json:"details"`
+	CreatedAt   time.Time      `json:"created_at"`
+}
+
 type Attachment struct {
 	ID        uuid.UUID      `json:"id"`
 	CardID    uuid.UUID      `json:"card_id"`

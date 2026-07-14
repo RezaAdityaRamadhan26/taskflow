@@ -84,6 +84,8 @@ func (s *ListService) CreateList(ctx context.Context, userID uuid.UUID, req dto.
 		return nil, fmt.Errorf("failed to create list")
 	}
 
+	logActivity(s.queries, list.BoardID, nil, userID, "CREATED_LIST", "LIST", list.Name, "")
+
 	return mapListToDTO(list), nil
 }
 
@@ -152,6 +154,14 @@ func (s *ListService) UpdateList(ctx context.Context, userID, listID uuid.UUID, 
 		return nil, fmt.Errorf("failed to update list")
 	}
 
+	action := "UPDATED_LIST"
+	if list.Name != req.Name {
+		action = "RENAMED_LIST"
+	} else if list.Position != req.Position {
+		action = "MOVED_LIST"
+	}
+	logActivity(s.queries, list.BoardID, nil, userID, action, "LIST", updatedList.Name, "")
+
 	return mapListToDTO(updatedList), nil
 }
 
@@ -171,6 +181,8 @@ func (s *ListService) DeleteList(ctx context.Context, userID, listID uuid.UUID) 
 		log.Printf("[ERROR] Failed to delete list: %v", err)
 		return fmt.Errorf("failed to delete list")
 	}
+
+	logActivity(s.queries, list.BoardID, nil, userID, "DELETED_LIST", "LIST", list.Name, "")
 
 	return nil
 }

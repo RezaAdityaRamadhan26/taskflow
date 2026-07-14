@@ -56,6 +56,7 @@ func main() {
 	listService := service.NewListService(queries)
 	cardService := service.NewCardService(queries)
 	cardExtrasService := service.NewCardExtrasService(queries)
+	activityLogService := service.NewActivityLogService(queries)
 
 	// ========================================
 	// Initialize Handlers
@@ -66,6 +67,7 @@ func main() {
 	listHandler := handler.NewListHandler(listService)
 	cardHandler := handler.NewCardHandler(cardService)
 	cardExtrasHandler := handler.NewCardExtrasHandler(cardExtrasService)
+	activityLogHandler := handler.NewActivityLogHandler(activityLogService)
 
 	// ========================================
 	// Fiber App Setup
@@ -194,6 +196,10 @@ func main() {
 	// Nested extras under card
 	cards.Get("/:cardId/comments", cardExtrasHandler.ListComments)
 	cards.Get("/:cardId/attachments", cardExtrasHandler.ListAttachments)
+	
+	// Activity logs routes (Read-only)
+	boards.Get("/:boardId/activities", activityLogHandler.ListBoardActivities)
+	cards.Get("/:cardId/activities", activityLogHandler.ListCardActivities)
 
 	// ========================================
 	// 404 handler
