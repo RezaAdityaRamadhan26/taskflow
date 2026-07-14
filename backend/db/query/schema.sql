@@ -6,6 +6,7 @@
 
 -- CreateEnum
 CREATE TYPE "Role" AS ENUM ('OWNER', 'ADMIN', 'MEMBER');
+CREATE TYPE "Priority" AS ENUM ('LOW', 'MEDIUM', 'HIGH', 'URGENT');
 
 -- Users table
 CREATE TABLE "users" (
@@ -108,3 +109,23 @@ CREATE INDEX "lists_board_id_idx" ON "lists"("board_id");
 
 ALTER TABLE "lists" ADD CONSTRAINT "lists_board_id_fkey"
     FOREIGN KEY ("board_id") REFERENCES "boards"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- Cards table
+CREATE TABLE "cards" (
+    "id" UUID NOT NULL,
+    "list_id" UUID NOT NULL,
+    "title" VARCHAR(255) NOT NULL,
+    "description" TEXT,
+    "position" FLOAT8 NOT NULL DEFAULT 0,
+    "priority" "Priority" NOT NULL DEFAULT 'MEDIUM',
+    "due_date" TIMESTAMPTZ,
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMPTZ NOT NULL,
+
+    CONSTRAINT "cards_pkey" PRIMARY KEY ("id")
+);
+
+CREATE INDEX "cards_list_id_idx" ON "cards"("list_id");
+
+ALTER TABLE "cards" ADD CONSTRAINT "cards_list_id_fkey"
+    FOREIGN KEY ("list_id") REFERENCES "lists"("id") ON DELETE CASCADE ON UPDATE CASCADE;

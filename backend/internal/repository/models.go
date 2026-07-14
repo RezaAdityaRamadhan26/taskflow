@@ -13,6 +13,50 @@ import (
 	"github.com/google/uuid"
 )
 
+type Priority string
+
+const (
+	PriorityLOW    Priority = "LOW"
+	PriorityMEDIUM Priority = "MEDIUM"
+	PriorityHIGH   Priority = "HIGH"
+	PriorityURGENT Priority = "URGENT"
+)
+
+func (e *Priority) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = Priority(s)
+	case string:
+		*e = Priority(s)
+	default:
+		return fmt.Errorf("unsupported scan type for Priority: %T", src)
+	}
+	return nil
+}
+
+type NullPriority struct {
+	Priority Priority `json:"Priority"`
+	Valid    bool     `json:"valid"` // Valid is true if Priority is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullPriority) Scan(value interface{}) error {
+	if value == nil {
+		ns.Priority, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.Priority.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullPriority) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.Priority), nil
+}
+
 type Role string
 
 const (
@@ -62,6 +106,18 @@ type Board struct {
 	Name        string         `json:"name"`
 	Description sql.NullString `json:"description"`
 	Color       sql.NullString `json:"color"`
+	CreatedAt   time.Time      `json:"created_at"`
+	UpdatedAt   time.Time      `json:"updated_at"`
+}
+
+type Card struct {
+	ID          uuid.UUID      `json:"id"`
+	ListID      uuid.UUID      `json:"list_id"`
+	Title       string         `json:"title"`
+	Description sql.NullString `json:"description"`
+	Position    float64        `json:"position"`
+	Priority    Priority       `json:"priority"`
+	DueDate     sql.NullTime   `json:"due_date"`
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`
 }

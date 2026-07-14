@@ -14,11 +14,13 @@ type Querier interface {
 	AddWorkspaceMember(ctx context.Context, arg AddWorkspaceMemberParams) (WorkspaceMember, error)
 	CountWorkspaceMembers(ctx context.Context, workspaceID uuid.UUID) (int64, error)
 	CreateBoard(ctx context.Context, arg CreateBoardParams) (Board, error)
+	CreateCard(ctx context.Context, arg CreateCardParams) (Card, error)
 	CreateList(ctx context.Context, arg CreateListParams) (List, error)
 	CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) (RefreshToken, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	CreateWorkspace(ctx context.Context, arg CreateWorkspaceParams) (Workspace, error)
 	DeleteBoard(ctx context.Context, id uuid.UUID) error
+	DeleteCard(ctx context.Context, id uuid.UUID) error
 	DeleteExpiredRefreshTokens(ctx context.Context) error
 	DeleteList(ctx context.Context, id uuid.UUID) error
 	DeleteRefreshToken(ctx context.Context, token string) error
@@ -26,8 +28,10 @@ type Querier interface {
 	DeleteUser(ctx context.Context, id uuid.UUID) error
 	DeleteWorkspace(ctx context.Context, id uuid.UUID) error
 	GetBoardByID(ctx context.Context, id uuid.UUID) (Board, error)
+	GetCardByID(ctx context.Context, id uuid.UUID) (Card, error)
 	GetListByID(ctx context.Context, id uuid.UUID) (List, error)
 	GetMaxPositionForBoard(ctx context.Context, boardID uuid.UUID) (float64, error)
+	GetMaxPositionForList(ctx context.Context, listID uuid.UUID) (float64, error)
 	GetRefreshToken(ctx context.Context, token string) (RefreshToken, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
@@ -35,11 +39,13 @@ type Querier interface {
 	GetWorkspaceBySlug(ctx context.Context, slug string) (Workspace, error)
 	GetWorkspaceMember(ctx context.Context, arg GetWorkspaceMemberParams) (WorkspaceMember, error)
 	ListBoardsByWorkspace(ctx context.Context, workspaceID uuid.UUID) ([]Board, error)
+	ListCardsByList(ctx context.Context, listID uuid.UUID) ([]Card, error)
 	ListListsByBoard(ctx context.Context, boardID uuid.UUID) ([]List, error)
 	ListWorkspaceMembers(ctx context.Context, workspaceID uuid.UUID) ([]ListWorkspaceMembersRow, error)
 	ListWorkspacesByUserID(ctx context.Context, userID uuid.UUID) ([]ListWorkspacesByUserIDRow, error)
 	RemoveWorkspaceMember(ctx context.Context, arg RemoveWorkspaceMemberParams) error
 	UpdateBoard(ctx context.Context, arg UpdateBoardParams) (Board, error)
+	UpdateCard(ctx context.Context, arg UpdateCardParams) (Card, error)
 	UpdateList(ctx context.Context, arg UpdateListParams) (List, error)
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
 	UpdateWorkspace(ctx context.Context, arg UpdateWorkspaceParams) (Workspace, error)

@@ -35,3 +35,8 @@ sql:
               import: "database/sql"
               type: "NullString"
             nullable: true
+          - column: "cards.due_date"
+            go_type:
+              import: "database/sql"
+              type: "NullTime"
+            nullable: true

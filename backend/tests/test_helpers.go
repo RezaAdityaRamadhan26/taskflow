@@ -104,6 +104,19 @@ type ListDTO struct {
 	UpdatedAt string  `json:"updated_at"`
 }
 
+// CardDTO matches the API card response.
+type CardDTO struct {
+	ID          string  `json:"id"`
+	ListID      string  `json:"list_id"`
+	Title       string  `json:"title"`
+	Description *string `json:"description,omitempty"`
+	Position    float64 `json:"position"`
+	Priority    string  `json:"priority"`
+	DueDate     *string `json:"due_date,omitempty"`
+	CreatedAt   string  `json:"created_at"`
+	UpdatedAt   string  `json:"updated_at"`
+}
+
 // SetupTestApp creates a Fiber app with all routes for testing.
 func SetupTestApp(t *testing.T) *TestApp {
 	t.Helper()
@@ -124,11 +137,13 @@ func SetupTestApp(t *testing.T) *TestApp {
 	workspaceService := service.NewWorkspaceService(queries)
 	boardService := service.NewBoardService(queries)
 	listService := service.NewListService(queries)
+	cardService := service.NewCardService(queries)
 
 	authHandler := handler.NewAuthHandler(authService, cfg)
 	workspaceHandler := handler.NewWorkspaceHandler(workspaceService)
 	boardHandler := handler.NewBoardHandler(boardService)
 	listHandler := handler.NewListHandler(listService)
+	cardHandler := handler.NewCardHandler(cardService)
 
 	// Register custom slug validation for workspace handler
 	v := validator.New()
@@ -190,6 +205,14 @@ func SetupTestApp(t *testing.T) *TestApp {
 	lists.Get("/:id", listHandler.Get)
 	lists.Put("/:id", listHandler.Update)
 	lists.Delete("/:id", listHandler.Delete)
+	lists.Get("/:listId/cards", cardHandler.List)
+
+	// Card routes
+	cards := api.Group("/cards", middleware.AuthMiddleware(cfg.JWTAccessSecret))
+	cards.Post("/", cardHandler.Create)
+	cards.Get("/:id", cardHandler.Get)
+	cards.Put("/:id", cardHandler.Update)
+	cards.Delete("/:id", cardHandler.Delete)
 
 	return &TestApp{App: app, Cfg: cfg}
 }
