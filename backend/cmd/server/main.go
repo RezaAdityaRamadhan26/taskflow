@@ -51,11 +51,13 @@ func main() {
 	// Initialize Services
 	// ========================================
 	authService := service.NewAuthService(queries, cfg)
+	workspaceService := service.NewWorkspaceService(queries)
 
 	// ========================================
 	// Initialize Handlers
 	// ========================================
 	authHandler := handler.NewAuthHandler(authService, cfg)
+	workspaceHandler := handler.NewWorkspaceHandler(workspaceService)
 
 	// ========================================
 	// Fiber App Setup
@@ -125,6 +127,20 @@ func main() {
 	authProtected := auth.Group("", middleware.AuthMiddleware(cfg.JWTAccessSecret))
 	authProtected.Post("/logout", authHandler.Logout)
 	authProtected.Get("/me", authHandler.Me)
+
+	// Workspace routes (all protected)
+	workspaces := api.Group("/workspaces", middleware.AuthMiddleware(cfg.JWTAccessSecret))
+	workspaces.Post("/", workspaceHandler.Create)
+	workspaces.Get("/", workspaceHandler.List)
+	workspaces.Get("/:id", workspaceHandler.Get)
+	workspaces.Put("/:id", workspaceHandler.Update)
+	workspaces.Delete("/:id", workspaceHandler.Delete)
+
+	// Workspace member routes
+	workspaces.Post("/:id/members", workspaceHandler.InviteMember)
+	workspaces.Get("/:id/members", workspaceHandler.ListMembers)
+	workspaces.Patch("/:id/members/:userId", workspaceHandler.UpdateMemberRole)
+	workspaces.Delete("/:id/members/:userId", workspaceHandler.RemoveMember)
 
 	// ========================================
 	// 404 handler

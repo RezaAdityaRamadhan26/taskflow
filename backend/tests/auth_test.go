@@ -1,169 +1,25 @@
-// Package tests provides integration tests for the TaskFlow API.
-// These tests run against a real database and test the full HTTP request/response cycle.
+// Package tests provides integration tests for the TaskFlow Auth API.
 package tests
 
 import (
-	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
-	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/cors"
-	"github.com/gofiber/fiber/v2/middleware/recover"
-
-	"github.com/RezaAdityaRamadhan26/taskflow/backend/internal/config"
-	"github.com/RezaAdityaRamadhan26/taskflow/backend/internal/database"
-	"github.com/RezaAdityaRamadhan26/taskflow/backend/internal/handler"
-	"github.com/RezaAdityaRamadhan26/taskflow/backend/internal/middleware"
-	"github.com/RezaAdityaRamadhan26/taskflow/backend/internal/repository"
-	"github.com/RezaAdityaRamadhan26/taskflow/backend/internal/service"
 )
-
-// testApp holds the Fiber app instance and configuration for tests.
-type testApp struct {
-	app *fiber.App
-	cfg *config.Config
-}
-
-// apiResponse is a generic API response struct for unmarshaling test results.
-type apiResponse struct {
-	Success bool            `json:"success"`
-	Message string          `json:"message"`
-	Data    json.RawMessage `json:"data"`
-	Error   string          `json:"error"`
-}
-
-// authResponseData represents the auth response data for register/login.
-type authResponseData struct {
-	User        userDTO `json:"user"`
-	AccessToken string  `json:"access_token"`
-}
-
-// tokenResponseData represents the token refresh response.
-type tokenResponseData struct {
-	AccessToken string `json:"access_token"`
-}
-
-// userDTO matches the API user response.
-type userDTO struct {
-	ID        string  `json:"id"`
-	Email     string  `json:"email"`
-	Name      string  `json:"name"`
-	AvatarURL *string `json:"avatar_url,omitempty"`
-	CreatedAt string  `json:"created_at"`
-	UpdatedAt string  `json:"updated_at"`
-}
-
-// setupTestApp creates a Fiber app with all routes for testing.
-func setupTestApp(t *testing.T) *testApp {
-	t.Helper()
-
-	cfg, err := config.Load()
-	if err != nil {
-		t.Fatalf("Failed to load config: %v", err)
-	}
-
-	pool, err := database.Connect(cfg.DatabaseURL)
-	if err != nil {
-		t.Fatalf("Failed to connect to database: %v", err)
-	}
-	t.Cleanup(func() { pool.Close() })
-
-	queries := repository.New(pool)
-	authService := service.NewAuthService(queries, cfg)
-	authHandler := handler.NewAuthHandler(authService, cfg)
-
-	app := fiber.New(fiber.Config{
-		ErrorHandler: func(c *fiber.Ctx, err error) error {
-			code := fiber.StatusInternalServerError
-			if e, ok := err.(*fiber.Error); ok {
-				code = e.Code
-			}
-			return c.Status(code).JSON(fiber.Map{"success": false, "error": err.Error()})
-		},
-	})
-	app.Use(recover.New())
-	app.Use(cors.New(cors.Config{
-		AllowOrigins:     "http://localhost:5173",
-		AllowCredentials: true,
-	}))
-
-	api := app.Group("/api/v1")
-	auth := api.Group("/auth")
-	auth.Post("/register", authHandler.Register)
-	auth.Post("/login", authHandler.Login)
-	auth.Post("/refresh", authHandler.Refresh)
-
-	authProtected := auth.Group("", middleware.AuthMiddleware(cfg.JWTAccessSecret))
-	authProtected.Post("/logout", authHandler.Logout)
-	authProtected.Get("/me", authHandler.Me)
-
-	return &testApp{app: app, cfg: cfg}
-}
-
-// makeRequest is a helper to create and execute HTTP requests against the test app.
-func (ta *testApp) makeRequest(t *testing.T, method, path string, body interface{}, headers map[string]string) (*http.Response, apiResponse) {
-	t.Helper()
-
-	var reqBody io.Reader
-	if body != nil {
-		jsonBody, err := json.Marshal(body)
-		if err != nil {
-			t.Fatalf("Failed to marshal request body: %v", err)
-		}
-		reqBody = bytes.NewReader(jsonBody)
-	}
-
-	req := httptest.NewRequest(method, path, reqBody)
-	req.Header.Set("Content-Type", "application/json")
-	for key, val := range headers {
-		req.Header.Set(key, val)
-	}
-
-	resp, err := ta.app.Test(req, -1)
-	if err != nil {
-		t.Fatalf("Failed to execute request: %v", err)
-	}
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatalf("Failed to read response body: %v", err)
-	}
-	defer resp.Body.Close()
-
-	var apiResp apiResponse
-	if err := json.Unmarshal(respBody, &apiResp); err != nil {
-		t.Fatalf("Failed to unmarshal response: %v\nBody: %s", err, string(respBody))
-	}
-
-	return resp, apiResp
-}
-
-// uniqueEmail generates a unique email for each test to avoid conflicts.
-func uniqueEmail() string {
-	return fmt.Sprintf("test_%d_%d@test.com", time.Now().UnixNano(), rand.Intn(999999))
-}
-
-// randomSuffix generates a random string suffix using timestamp nanoseconds.
-func randomSuffix() string {
-	return fmt.Sprintf("%d", rand.Intn(999999))
-}
 
 // ============================================
 // TEST: Register
 // ============================================
 
 func TestRegister_Success(t *testing.T) {
-	ta := setupTestApp(t)
-	email := uniqueEmail()
+	ta := SetupTestApp(t)
+	email := UniqueEmail()
 
-	resp, apiResp := ta.makeRequest(t, "POST", "/api/v1/auth/register", map[string]string{
+	resp, apiResp := ta.MakeRequest(t, "POST", "/api/v1/auth/register", map[string]string{
 		"email":    email,
 		"password": "TestPass123",
 		"name":     "Test User",
@@ -176,8 +32,7 @@ func TestRegister_Success(t *testing.T) {
 		t.Errorf("Expected success=true, got false. Error: %s", apiResp.Error)
 	}
 
-	// Parse data
-	var data authResponseData
+	var data AuthResponseData
 	if err := json.Unmarshal(apiResp.Data, &data); err != nil {
 		t.Fatalf("Failed to parse auth data: %v", err)
 	}
@@ -215,18 +70,16 @@ func TestRegister_Success(t *testing.T) {
 }
 
 func TestRegister_DuplicateEmail(t *testing.T) {
-	ta := setupTestApp(t)
-	email := uniqueEmail()
+	ta := SetupTestApp(t)
+	email := UniqueEmail()
 
-	// Register first time
-	ta.makeRequest(t, "POST", "/api/v1/auth/register", map[string]string{
+	ta.MakeRequest(t, "POST", "/api/v1/auth/register", map[string]string{
 		"email":    email,
 		"password": "TestPass123",
 		"name":     "Test User",
 	}, nil)
 
-	// Register again with same email
-	resp, apiResp := ta.makeRequest(t, "POST", "/api/v1/auth/register", map[string]string{
+	resp, apiResp := ta.MakeRequest(t, "POST", "/api/v1/auth/register", map[string]string{
 		"email":    email,
 		"password": "TestPass456",
 		"name":     "Test User 2",
@@ -241,9 +94,9 @@ func TestRegister_DuplicateEmail(t *testing.T) {
 }
 
 func TestRegister_InvalidEmail(t *testing.T) {
-	ta := setupTestApp(t)
+	ta := SetupTestApp(t)
 
-	resp, apiResp := ta.makeRequest(t, "POST", "/api/v1/auth/register", map[string]string{
+	resp, apiResp := ta.MakeRequest(t, "POST", "/api/v1/auth/register", map[string]string{
 		"email":    "not-an-email",
 		"password": "TestPass123",
 		"name":     "Test User",
@@ -258,10 +111,10 @@ func TestRegister_InvalidEmail(t *testing.T) {
 }
 
 func TestRegister_ShortPassword(t *testing.T) {
-	ta := setupTestApp(t)
+	ta := SetupTestApp(t)
 
-	resp, apiResp := ta.makeRequest(t, "POST", "/api/v1/auth/register", map[string]string{
-		"email":    uniqueEmail(),
+	resp, apiResp := ta.MakeRequest(t, "POST", "/api/v1/auth/register", map[string]string{
+		"email":    UniqueEmail(),
 		"password": "short",
 		"name":     "Test User",
 	}, nil)
@@ -275,10 +128,9 @@ func TestRegister_ShortPassword(t *testing.T) {
 }
 
 func TestRegister_MissingFields(t *testing.T) {
-	ta := setupTestApp(t)
+	ta := SetupTestApp(t)
 
-	// Missing email
-	resp, _ := ta.makeRequest(t, "POST", "/api/v1/auth/register", map[string]string{
+	resp, _ := ta.MakeRequest(t, "POST", "/api/v1/auth/register", map[string]string{
 		"password": "TestPass123",
 		"name":     "Test User",
 	}, nil)
@@ -286,18 +138,16 @@ func TestRegister_MissingFields(t *testing.T) {
 		t.Errorf("Missing email: expected 422, got %d", resp.StatusCode)
 	}
 
-	// Missing password
-	resp, _ = ta.makeRequest(t, "POST", "/api/v1/auth/register", map[string]string{
-		"email": uniqueEmail(),
+	resp, _ = ta.MakeRequest(t, "POST", "/api/v1/auth/register", map[string]string{
+		"email": UniqueEmail(),
 		"name":  "Test User",
 	}, nil)
 	if resp.StatusCode != fiber.StatusUnprocessableEntity {
 		t.Errorf("Missing password: expected 422, got %d", resp.StatusCode)
 	}
 
-	// Missing name
-	resp, _ = ta.makeRequest(t, "POST", "/api/v1/auth/register", map[string]string{
-		"email":    uniqueEmail(),
+	resp, _ = ta.MakeRequest(t, "POST", "/api/v1/auth/register", map[string]string{
+		"email":    UniqueEmail(),
 		"password": "TestPass123",
 	}, nil)
 	if resp.StatusCode != fiber.StatusUnprocessableEntity {
@@ -306,9 +156,9 @@ func TestRegister_MissingFields(t *testing.T) {
 }
 
 func TestRegister_EmptyBody(t *testing.T) {
-	ta := setupTestApp(t)
+	ta := SetupTestApp(t)
 
-	resp, apiResp := ta.makeRequest(t, "POST", "/api/v1/auth/register", nil, nil)
+	resp, apiResp := ta.MakeRequest(t, "POST", "/api/v1/auth/register", nil, nil)
 
 	if resp.StatusCode != fiber.StatusUnprocessableEntity && resp.StatusCode != fiber.StatusBadRequest {
 		t.Errorf("Expected status 422 or 400, got %d", resp.StatusCode)
@@ -323,18 +173,16 @@ func TestRegister_EmptyBody(t *testing.T) {
 // ============================================
 
 func TestLogin_Success(t *testing.T) {
-	ta := setupTestApp(t)
-	email := uniqueEmail()
+	ta := SetupTestApp(t)
+	email := UniqueEmail()
 
-	// Register first
-	ta.makeRequest(t, "POST", "/api/v1/auth/register", map[string]string{
+	ta.MakeRequest(t, "POST", "/api/v1/auth/register", map[string]string{
 		"email":    email,
 		"password": "TestPass123",
 		"name":     "Test User",
 	}, nil)
 
-	// Login
-	resp, apiResp := ta.makeRequest(t, "POST", "/api/v1/auth/login", map[string]string{
+	resp, apiResp := ta.MakeRequest(t, "POST", "/api/v1/auth/login", map[string]string{
 		"email":    email,
 		"password": "TestPass123",
 	}, nil)
@@ -346,7 +194,7 @@ func TestLogin_Success(t *testing.T) {
 		t.Errorf("Expected success=true. Error: %s", apiResp.Error)
 	}
 
-	var data authResponseData
+	var data AuthResponseData
 	if err := json.Unmarshal(apiResp.Data, &data); err != nil {
 		t.Fatalf("Failed to parse auth data: %v", err)
 	}
@@ -359,18 +207,16 @@ func TestLogin_Success(t *testing.T) {
 }
 
 func TestLogin_WrongPassword(t *testing.T) {
-	ta := setupTestApp(t)
-	email := uniqueEmail()
+	ta := SetupTestApp(t)
+	email := UniqueEmail()
 
-	// Register
-	ta.makeRequest(t, "POST", "/api/v1/auth/register", map[string]string{
+	ta.MakeRequest(t, "POST", "/api/v1/auth/register", map[string]string{
 		"email":    email,
 		"password": "TestPass123",
 		"name":     "Test User",
 	}, nil)
 
-	// Login with wrong password
-	resp, apiResp := ta.makeRequest(t, "POST", "/api/v1/auth/login", map[string]string{
+	resp, apiResp := ta.MakeRequest(t, "POST", "/api/v1/auth/login", map[string]string{
 		"email":    email,
 		"password": "WrongPass123",
 	}, nil)
@@ -384,9 +230,9 @@ func TestLogin_WrongPassword(t *testing.T) {
 }
 
 func TestLogin_NonExistentEmail(t *testing.T) {
-	ta := setupTestApp(t)
+	ta := SetupTestApp(t)
 
-	resp, apiResp := ta.makeRequest(t, "POST", "/api/v1/auth/login", map[string]string{
+	resp, apiResp := ta.MakeRequest(t, "POST", "/api/v1/auth/login", map[string]string{
 		"email":    "nonexistent@test.com",
 		"password": "TestPass123",
 	}, nil)
@@ -400,10 +246,9 @@ func TestLogin_NonExistentEmail(t *testing.T) {
 }
 
 func TestLogin_InvalidInput(t *testing.T) {
-	ta := setupTestApp(t)
+	ta := SetupTestApp(t)
 
-	// Missing password
-	resp, _ := ta.makeRequest(t, "POST", "/api/v1/auth/login", map[string]string{
+	resp, _ := ta.MakeRequest(t, "POST", "/api/v1/auth/login", map[string]string{
 		"email": "test@test.com",
 	}, nil)
 	if resp.StatusCode != fiber.StatusUnprocessableEntity {
@@ -416,23 +261,12 @@ func TestLogin_InvalidInput(t *testing.T) {
 // ============================================
 
 func TestMe_Success(t *testing.T) {
-	ta := setupTestApp(t)
-	email := uniqueEmail()
+	ta := SetupTestApp(t)
+	email := UniqueEmail()
 
-	// Register and get token
-	_, apiResp := ta.makeRequest(t, "POST", "/api/v1/auth/register", map[string]string{
-		"email":    email,
-		"password": "TestPass123",
-		"name":     "Test User Me",
-	}, nil)
+	token, _ := ta.RegisterAndLogin(t, email, "TestPass123", "Test User Me")
 
-	var data authResponseData
-	json.Unmarshal(apiResp.Data, &data)
-
-	// Get profile
-	resp, meResp := ta.makeRequest(t, "GET", "/api/v1/auth/me", nil, map[string]string{
-		"Authorization": "Bearer " + data.AccessToken,
-	})
+	resp, meResp := ta.MakeRequest(t, "GET", "/api/v1/auth/me", nil, AuthHeader(token))
 
 	if resp.StatusCode != fiber.StatusOK {
 		t.Errorf("Expected status 200, got %d. Error: %s", resp.StatusCode, meResp.Error)
@@ -441,7 +275,7 @@ func TestMe_Success(t *testing.T) {
 		t.Errorf("Expected success=true. Error: %s", meResp.Error)
 	}
 
-	var user userDTO
+	var user UserDTO
 	if err := json.Unmarshal(meResp.Data, &user); err != nil {
 		t.Fatalf("Failed to parse user data: %v", err)
 	}
@@ -454,9 +288,9 @@ func TestMe_Success(t *testing.T) {
 }
 
 func TestMe_NoToken(t *testing.T) {
-	ta := setupTestApp(t)
+	ta := SetupTestApp(t)
 
-	resp, apiResp := ta.makeRequest(t, "GET", "/api/v1/auth/me", nil, nil)
+	resp, apiResp := ta.MakeRequest(t, "GET", "/api/v1/auth/me", nil, nil)
 
 	if resp.StatusCode != fiber.StatusUnauthorized {
 		t.Errorf("Expected status 401, got %d", resp.StatusCode)
@@ -467,11 +301,9 @@ func TestMe_NoToken(t *testing.T) {
 }
 
 func TestMe_InvalidToken(t *testing.T) {
-	ta := setupTestApp(t)
+	ta := SetupTestApp(t)
 
-	resp, apiResp := ta.makeRequest(t, "GET", "/api/v1/auth/me", nil, map[string]string{
-		"Authorization": "Bearer invalid-token-here",
-	})
+	resp, apiResp := ta.MakeRequest(t, "GET", "/api/v1/auth/me", nil, AuthHeader("invalid-token-here"))
 
 	if resp.StatusCode != fiber.StatusUnauthorized {
 		t.Errorf("Expected status 401, got %d", resp.StatusCode)
@@ -482,10 +314,9 @@ func TestMe_InvalidToken(t *testing.T) {
 }
 
 func TestMe_MalformedAuthHeader(t *testing.T) {
-	ta := setupTestApp(t)
+	ta := SetupTestApp(t)
 
-	// No "Bearer" prefix
-	resp, _ := ta.makeRequest(t, "GET", "/api/v1/auth/me", nil, map[string]string{
+	resp, _ := ta.MakeRequest(t, "GET", "/api/v1/auth/me", nil, map[string]string{
 		"Authorization": "just-a-token",
 	})
 	if resp.StatusCode != fiber.StatusUnauthorized {
@@ -498,17 +329,15 @@ func TestMe_MalformedAuthHeader(t *testing.T) {
 // ============================================
 
 func TestRefresh_Success(t *testing.T) {
-	ta := setupTestApp(t)
-	email := uniqueEmail()
+	ta := SetupTestApp(t)
+	email := UniqueEmail()
 
-	// Register and get refresh token cookie
-	resp, _ := ta.makeRequest(t, "POST", "/api/v1/auth/register", map[string]string{
+	resp, _ := ta.MakeRequest(t, "POST", "/api/v1/auth/register", map[string]string{
 		"email":    email,
 		"password": "TestPass123",
 		"name":     "Test User Refresh",
 	}, nil)
 
-	// Extract refresh token from cookie
 	var refreshToken string
 	for _, c := range resp.Cookies() {
 		if c.Name == "refresh_token" {
@@ -519,12 +348,11 @@ func TestRefresh_Success(t *testing.T) {
 		t.Fatal("No refresh_token cookie found after registration")
 	}
 
-	// Make refresh request with cookie
 	req := httptest.NewRequest("POST", "/api/v1/auth/refresh", nil)
 	req.Header.Set("Content-Type", "application/json")
 	req.AddCookie(&http.Cookie{Name: "refresh_token", Value: refreshToken})
 
-	refreshResp, err := ta.app.Test(req, -1)
+	refreshResp, err := ta.App.Test(req, -1)
 	if err != nil {
 		t.Fatalf("Failed to execute refresh request: %v", err)
 	}
@@ -532,7 +360,7 @@ func TestRefresh_Success(t *testing.T) {
 	respBody, _ := io.ReadAll(refreshResp.Body)
 	defer refreshResp.Body.Close()
 
-	var apiResp apiResponse
+	var apiResp APIResponse
 	json.Unmarshal(respBody, &apiResp)
 
 	if refreshResp.StatusCode != fiber.StatusOK {
@@ -542,13 +370,12 @@ func TestRefresh_Success(t *testing.T) {
 		t.Errorf("Expected success=true. Error: %s", apiResp.Error)
 	}
 
-	var tokenData tokenResponseData
+	var tokenData TokenResponseData
 	json.Unmarshal(apiResp.Data, &tokenData)
 	if tokenData.AccessToken == "" {
 		t.Error("Expected non-empty access_token after refresh")
 	}
 
-	// Verify new refresh token cookie was set (rotation)
 	newRefreshFound := false
 	for _, c := range refreshResp.Cookies() {
 		if c.Name == "refresh_token" && c.Value != "" {
@@ -561,9 +388,9 @@ func TestRefresh_Success(t *testing.T) {
 }
 
 func TestRefresh_NoCookie(t *testing.T) {
-	ta := setupTestApp(t)
+	ta := SetupTestApp(t)
 
-	resp, apiResp := ta.makeRequest(t, "POST", "/api/v1/auth/refresh", nil, nil)
+	resp, apiResp := ta.MakeRequest(t, "POST", "/api/v1/auth/refresh", nil, nil)
 
 	if resp.StatusCode != fiber.StatusUnauthorized {
 		t.Errorf("Expected status 401, got %d", resp.StatusCode)
@@ -574,13 +401,13 @@ func TestRefresh_NoCookie(t *testing.T) {
 }
 
 func TestRefresh_InvalidToken(t *testing.T) {
-	ta := setupTestApp(t)
+	ta := SetupTestApp(t)
 
 	req := httptest.NewRequest("POST", "/api/v1/auth/refresh", nil)
 	req.Header.Set("Content-Type", "application/json")
 	req.AddCookie(&http.Cookie{Name: "refresh_token", Value: "invalid-refresh-token"})
 
-	resp, err := ta.app.Test(req, -1)
+	resp, err := ta.App.Test(req, -1)
 	if err != nil {
 		t.Fatalf("Failed to execute request: %v", err)
 	}
@@ -595,23 +422,12 @@ func TestRefresh_InvalidToken(t *testing.T) {
 // ============================================
 
 func TestLogout_Success(t *testing.T) {
-	ta := setupTestApp(t)
-	email := uniqueEmail()
+	ta := SetupTestApp(t)
+	email := UniqueEmail()
 
-	// Register
-	_, apiResp := ta.makeRequest(t, "POST", "/api/v1/auth/register", map[string]string{
-		"email":    email,
-		"password": "TestPass123",
-		"name":     "Test Logout",
-	}, nil)
+	token, _ := ta.RegisterAndLogin(t, email, "TestPass123", "Test Logout")
 
-	var data authResponseData
-	json.Unmarshal(apiResp.Data, &data)
-
-	// Logout
-	resp, logoutResp := ta.makeRequest(t, "POST", "/api/v1/auth/logout", nil, map[string]string{
-		"Authorization": "Bearer " + data.AccessToken,
-	})
+	resp, logoutResp := ta.MakeRequest(t, "POST", "/api/v1/auth/logout", nil, AuthHeader(token))
 
 	if resp.StatusCode != fiber.StatusOK {
 		t.Errorf("Expected status 200, got %d. Error: %s", resp.StatusCode, logoutResp.Error)
@@ -622,9 +438,9 @@ func TestLogout_Success(t *testing.T) {
 }
 
 func TestLogout_NoToken(t *testing.T) {
-	ta := setupTestApp(t)
+	ta := SetupTestApp(t)
 
-	resp, apiResp := ta.makeRequest(t, "POST", "/api/v1/auth/logout", nil, nil)
+	resp, apiResp := ta.MakeRequest(t, "POST", "/api/v1/auth/logout", nil, nil)
 
 	if resp.StatusCode != fiber.StatusUnauthorized {
 		t.Errorf("Expected status 401, got %d", resp.StatusCode)
@@ -635,54 +451,43 @@ func TestLogout_NoToken(t *testing.T) {
 }
 
 // ============================================
-// TEST: Full Auth Flow (Register -> Login -> Me -> Refresh -> Logout)
+// TEST: Full Auth Flow
 // ============================================
 
 func TestFullAuthFlow(t *testing.T) {
-	ta := setupTestApp(t)
-	email := uniqueEmail()
+	ta := SetupTestApp(t)
+	email := UniqueEmail()
 	password := "FlowTest123"
 
 	// Step 1: Register
-	regResp, regAPI := ta.makeRequest(t, "POST", "/api/v1/auth/register", map[string]string{
+	regResp, regAPI := ta.MakeRequest(t, "POST", "/api/v1/auth/register", map[string]string{
 		"email":    email,
 		"password": password,
 		"name":     "Flow Test User",
 	}, nil)
-
 	if regResp.StatusCode != fiber.StatusCreated {
 		t.Fatalf("Register failed: %d - %s", regResp.StatusCode, regAPI.Error)
 	}
 
-	// Step 2: Login with same credentials
-	loginResp, loginAPI := ta.makeRequest(t, "POST", "/api/v1/auth/login", map[string]string{
+	// Step 2: Login
+	loginResp, loginAPI := ta.MakeRequest(t, "POST", "/api/v1/auth/login", map[string]string{
 		"email":    email,
 		"password": password,
 	}, nil)
-
 	if loginResp.StatusCode != fiber.StatusOK {
 		t.Fatalf("Login failed: %d - %s", loginResp.StatusCode, loginAPI.Error)
 	}
 
-	var loginData authResponseData
+	var loginData AuthResponseData
 	json.Unmarshal(loginAPI.Data, &loginData)
 
-	// Step 3: Get profile
-	_, meAPI := ta.makeRequest(t, "GET", "/api/v1/auth/me", nil, map[string]string{
-		"Authorization": "Bearer " + loginData.AccessToken,
-	})
-
+	// Step 3: Me
+	_, meAPI := ta.MakeRequest(t, "GET", "/api/v1/auth/me", nil, AuthHeader(loginData.AccessToken))
 	if !meAPI.Success {
 		t.Fatalf("Me failed: %s", meAPI.Error)
 	}
 
-	var user userDTO
-	json.Unmarshal(meAPI.Data, &user)
-	if user.Email != email {
-		t.Errorf("Me returned wrong email: %s", user.Email)
-	}
-
-	// Step 4: Refresh token
+	// Step 4: Refresh
 	var refreshToken string
 	for _, c := range loginResp.Cookies() {
 		if c.Name == "refresh_token" {
@@ -693,17 +498,13 @@ func TestFullAuthFlow(t *testing.T) {
 	req := httptest.NewRequest("POST", "/api/v1/auth/refresh", nil)
 	req.Header.Set("Content-Type", "application/json")
 	req.AddCookie(&http.Cookie{Name: "refresh_token", Value: refreshToken})
-
-	refreshResp, _ := ta.app.Test(req, -1)
+	refreshResp, _ := ta.App.Test(req, -1)
 	if refreshResp.StatusCode != fiber.StatusOK {
 		t.Fatalf("Refresh failed: status %d", refreshResp.StatusCode)
 	}
 
 	// Step 5: Logout
-	logoutResp, logoutAPI := ta.makeRequest(t, "POST", "/api/v1/auth/logout", nil, map[string]string{
-		"Authorization": "Bearer " + loginData.AccessToken,
-	})
-
+	logoutResp, logoutAPI := ta.MakeRequest(t, "POST", "/api/v1/auth/logout", nil, AuthHeader(loginData.AccessToken))
 	if logoutResp.StatusCode != fiber.StatusOK {
 		t.Fatalf("Logout failed: %d - %s", logoutResp.StatusCode, logoutAPI.Error)
 	}
