@@ -111,7 +111,26 @@ model Board {
 
   // Relations
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  lists     List[]
 
   @@index([workspaceId])
   @@map("boards")
+}
+
+// ============================================
+// List - A column within a board (e.g., To Do, In Progress)
+// ============================================
+model List {
+  id        String   @id @default(uuid()) @db.Uuid
+  boardId   String   @map("board_id") @db.Uuid
+  name      String   @db.VarChar(100)
+  position  Float    @default(0) // Float allows easy reordering (e.g., between 1 and 2 is 1.5)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+
+  // Relations
+  board Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  @@index([boardId])
+  @@map("lists")
 }

@@ -66,6 +66,15 @@ type Board struct {
 	UpdatedAt   time.Time      `json:"updated_at"`
 }
 
+type List struct {
+	ID        uuid.UUID `json:"id"`
+	BoardID   uuid.UUID `json:"board_id"`
+	Name      string    `json:"name"`
+	Position  float64   `json:"position"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
 type RefreshToken struct {
 	ID        uuid.UUID `json:"id"`
 	Token     string    `json:"token"`

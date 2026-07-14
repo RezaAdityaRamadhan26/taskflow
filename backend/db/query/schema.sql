@@ -91,3 +91,20 @@ CREATE INDEX "boards_workspace_id_idx" ON "boards"("workspace_id");
 
 ALTER TABLE "boards" ADD CONSTRAINT "boards_workspace_id_fkey"
     FOREIGN KEY ("workspace_id") REFERENCES "workspaces"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- Lists table
+CREATE TABLE "lists" (
+    "id" UUID NOT NULL,
+    "board_id" UUID NOT NULL,
+    "name" VARCHAR(100) NOT NULL,
+    "position" FLOAT8 NOT NULL DEFAULT 0,
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMPTZ NOT NULL,
+
+    CONSTRAINT "lists_pkey" PRIMARY KEY ("id")
+);
+
+CREATE INDEX "lists_board_id_idx" ON "lists"("board_id");
+
+ALTER TABLE "lists" ADD CONSTRAINT "lists_board_id_fkey"
+    FOREIGN KEY ("board_id") REFERENCES "boards"("id") ON DELETE CASCADE ON UPDATE CASCADE;

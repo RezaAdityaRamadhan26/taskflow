@@ -53,6 +53,7 @@ func main() {
 	authService := service.NewAuthService(queries, cfg)
 	workspaceService := service.NewWorkspaceService(queries)
 	boardService := service.NewBoardService(queries)
+	listService := service.NewListService(queries)
 
 	// ========================================
 	// Initialize Handlers
@@ -60,6 +61,7 @@ func main() {
 	authHandler := handler.NewAuthHandler(authService, cfg)
 	workspaceHandler := handler.NewWorkspaceHandler(workspaceService)
 	boardHandler := handler.NewBoardHandler(boardService)
+	listHandler := handler.NewListHandler(listService)
 
 	// ========================================
 	// Fiber App Setup
@@ -153,6 +155,16 @@ func main() {
 	
 	// Nested boards under workspace
 	workspaces.Get("/:workspaceId/boards", boardHandler.List)
+
+	// List routes (all protected)
+	lists := api.Group("/lists", middleware.AuthMiddleware(cfg.JWTAccessSecret))
+	lists.Post("/", listHandler.Create)
+	lists.Get("/:id", listHandler.Get)
+	lists.Put("/:id", listHandler.Update)
+	lists.Delete("/:id", listHandler.Delete)
+
+	// Nested lists under board
+	boards.Get("/:boardId/lists", listHandler.List)
 
 	// ========================================
 	// 404 handler
