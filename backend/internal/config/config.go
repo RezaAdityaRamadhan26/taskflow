@@ -31,8 +31,19 @@ type Config struct {
 // Load reads environment variables from .env file and returns a Config struct.
 // Returns an error if any required variable is missing.
 func Load() (*Config, error) {
-	// Load .env file (ignore error if not found — production uses real env vars)
-	_ = godotenv.Load("../.env")
+	// Try loading .env from multiple possible locations
+	// (supports running from backend/, backend/cmd/server/, or backend/tests/)
+	envPaths := []string{
+		"../.env",       // from backend/cmd/server/
+		"../../.env",    // from backend/tests/
+		".env",          // from backend/ or root
+		"../.env",       // fallback
+	}
+	for _, path := range envPaths {
+		if err := godotenv.Load(path); err == nil {
+			break
+		}
+	}
 
 	cfg := &Config{
 		ServerPort:         getEnv("SERVER_PORT", "3000"),
