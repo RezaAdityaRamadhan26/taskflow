@@ -117,6 +117,23 @@ type CardDTO struct {
 	UpdatedAt   string  `json:"updated_at"`
 }
 
+// CommentDTO matches the API comment response.
+type CommentDTO struct {
+	ID        string  `json:"id"`
+	CardID    string  `json:"card_id"`
+	UserID    string  `json:"user_id"`
+	UserName  string  `json:"user_name"`
+	Content   string  `json:"content"`
+}
+
+// AttachmentDTO matches the API attachment response.
+type AttachmentDTO struct {
+	ID        string  `json:"id"`
+	CardID    string  `json:"card_id"`
+	FileName  string  `json:"file_name"`
+	FileURL   string  `json:"file_url"`
+}
+
 // SetupTestApp creates a Fiber app with all routes for testing.
 func SetupTestApp(t *testing.T) *TestApp {
 	t.Helper()
@@ -138,12 +155,14 @@ func SetupTestApp(t *testing.T) *TestApp {
 	boardService := service.NewBoardService(queries)
 	listService := service.NewListService(queries)
 	cardService := service.NewCardService(queries)
+	cardExtrasService := service.NewCardExtrasService(queries)
 
 	authHandler := handler.NewAuthHandler(authService, cfg)
 	workspaceHandler := handler.NewWorkspaceHandler(workspaceService)
 	boardHandler := handler.NewBoardHandler(boardService)
 	listHandler := handler.NewListHandler(listService)
 	cardHandler := handler.NewCardHandler(cardService)
+	cardExtrasHandler := handler.NewCardExtrasHandler(cardExtrasService)
 
 	// Register custom slug validation for workspace handler
 	v := validator.New()
@@ -213,6 +232,19 @@ func SetupTestApp(t *testing.T) *TestApp {
 	cards.Get("/:id", cardHandler.Get)
 	cards.Put("/:id", cardHandler.Update)
 	cards.Delete("/:id", cardHandler.Delete)
+	cards.Get("/:cardId/comments", cardExtrasHandler.ListComments)
+	cards.Get("/:cardId/attachments", cardExtrasHandler.ListAttachments)
+
+	// Comments routes
+	comments := api.Group("/comments", middleware.AuthMiddleware(cfg.JWTAccessSecret))
+	comments.Post("/", cardExtrasHandler.CreateComment)
+	comments.Put("/:id", cardExtrasHandler.UpdateComment)
+	comments.Delete("/:id", cardExtrasHandler.DeleteComment)
+
+	// Attachments routes
+	attachments := api.Group("/attachments", middleware.AuthMiddleware(cfg.JWTAccessSecret))
+	attachments.Post("/", cardExtrasHandler.CreateAttachment)
+	attachments.Delete("/:id", cardExtrasHandler.DeleteAttachment)
 
 	return &TestApp{App: app, Cfg: cfg}
 }

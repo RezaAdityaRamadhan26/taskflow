@@ -27,6 +27,8 @@ model User {
   // Relations
   workspaces    WorkspaceMember[]
   refreshTokens RefreshToken[]
+  comments      Comment[]
+  attachments   Attachment[]
 
   @@map("users")
 }
@@ -158,8 +160,51 @@ model Card {
   updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz()
 
   // Relations
-  list List @relation(fields: [listId], references: [id], onDelete: Cascade)
+  list        List         @relation(fields: [listId], references: [id], onDelete: Cascade)
+  comments    Comment[]
+  attachments Attachment[]
 
   @@index([listId])
   @@map("cards")
+}
+
+// ============================================
+// Comment - User comments on a card
+// ============================================
+model Comment {
+  id        String   @id @default(uuid()) @db.Uuid
+  cardId    String   @map("card_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  content   String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+
+  // Relations
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([cardId])
+  @@index([userId])
+  @@map("comments")
+}
+
+// ============================================
+// Attachment - File links attached to a card
+// ============================================
+model Attachment {
+  id        String   @id @default(uuid()) @db.Uuid
+  cardId    String   @map("card_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  fileName  String   @map("file_name") @db.VarChar(255)
+  fileUrl   String   @map("file_url") @db.Text
+  fileSize  Int?     @map("file_size") // in bytes
+  fileType  String?  @map("file_type") @db.VarChar(100)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  // Relations
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([cardId])
+  @@map("attachments")
 }

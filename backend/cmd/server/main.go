@@ -55,6 +55,7 @@ func main() {
 	boardService := service.NewBoardService(queries)
 	listService := service.NewListService(queries)
 	cardService := service.NewCardService(queries)
+	cardExtrasService := service.NewCardExtrasService(queries)
 
 	// ========================================
 	// Initialize Handlers
@@ -64,6 +65,7 @@ func main() {
 	boardHandler := handler.NewBoardHandler(boardService)
 	listHandler := handler.NewListHandler(listService)
 	cardHandler := handler.NewCardHandler(cardService)
+	cardExtrasHandler := handler.NewCardExtrasHandler(cardExtrasService)
 
 	// ========================================
 	// Fiber App Setup
@@ -177,6 +179,21 @@ func main() {
 
 	// Nested cards under list
 	lists.Get("/:listId/cards", cardHandler.List)
+
+	// Comments routes
+	comments := api.Group("/comments", middleware.AuthMiddleware(cfg.JWTAccessSecret))
+	comments.Post("/", cardExtrasHandler.CreateComment)
+	comments.Put("/:id", cardExtrasHandler.UpdateComment)
+	comments.Delete("/:id", cardExtrasHandler.DeleteComment)
+
+	// Attachments routes
+	attachments := api.Group("/attachments", middleware.AuthMiddleware(cfg.JWTAccessSecret))
+	attachments.Post("/", cardExtrasHandler.CreateAttachment)
+	attachments.Delete("/:id", cardExtrasHandler.DeleteAttachment)
+
+	// Nested extras under card
+	cards.Get("/:cardId/comments", cardExtrasHandler.ListComments)
+	cards.Get("/:cardId/attachments", cardExtrasHandler.ListAttachments)
 
 	// ========================================
 	// 404 handler

@@ -100,6 +100,17 @@ func (ns NullRole) Value() (driver.Value, error) {
 	return string(ns.Role), nil
 }
 
+type Attachment struct {
+	ID        uuid.UUID      `json:"id"`
+	CardID    uuid.UUID      `json:"card_id"`
+	UserID    uuid.UUID      `json:"user_id"`
+	FileName  string         `json:"file_name"`
+	FileUrl   string         `json:"file_url"`
+	FileSize  sql.NullInt32  `json:"file_size"`
+	FileType  sql.NullString `json:"file_type"`
+	CreatedAt time.Time      `json:"created_at"`
+}
+
 type Board struct {
 	ID          uuid.UUID      `json:"id"`
 	WorkspaceID uuid.UUID      `json:"workspace_id"`
@@ -120,6 +131,15 @@ type Card struct {
 	DueDate     sql.NullTime   `json:"due_date"`
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`
+}
+
+type Comment struct {
+	ID        uuid.UUID `json:"id"`
+	CardID    uuid.UUID `json:"card_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	Content   string    `json:"content"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type List struct {

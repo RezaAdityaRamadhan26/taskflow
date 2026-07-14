@@ -40,3 +40,13 @@ sql:
               import: "database/sql"
               type: "NullTime"
             nullable: true
+          - column: "attachments.file_type"
+            go_type:
+              import: "database/sql"
+              type: "NullString"
+            nullable: true
+          - column: "attachments.file_size"
+            go_type:
+              import: "database/sql"
+              type: "NullInt32"
+            nullable: true
