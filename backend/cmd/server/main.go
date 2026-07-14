@@ -52,12 +52,14 @@ func main() {
 	// ========================================
 	authService := service.NewAuthService(queries, cfg)
 	workspaceService := service.NewWorkspaceService(queries)
+	boardService := service.NewBoardService(queries)
 
 	// ========================================
 	// Initialize Handlers
 	// ========================================
 	authHandler := handler.NewAuthHandler(authService, cfg)
 	workspaceHandler := handler.NewWorkspaceHandler(workspaceService)
+	boardHandler := handler.NewBoardHandler(boardService)
 
 	// ========================================
 	// Fiber App Setup
@@ -141,6 +143,16 @@ func main() {
 	workspaces.Get("/:id/members", workspaceHandler.ListMembers)
 	workspaces.Patch("/:id/members/:userId", workspaceHandler.UpdateMemberRole)
 	workspaces.Delete("/:id/members/:userId", workspaceHandler.RemoveMember)
+
+	// Board routes (all protected)
+	boards := api.Group("/boards", middleware.AuthMiddleware(cfg.JWTAccessSecret))
+	boards.Post("/", boardHandler.Create)
+	boards.Get("/:id", boardHandler.Get)
+	boards.Put("/:id", boardHandler.Update)
+	boards.Delete("/:id", boardHandler.Delete)
+	
+	// Nested boards under workspace
+	workspaces.Get("/:workspaceId/boards", boardHandler.List)
 
 	// ========================================
 	// 404 handler

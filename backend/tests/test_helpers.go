@@ -83,6 +83,17 @@ type WorkspaceMemberDTO struct {
 	JoinedAt  string  `json:"joined_at"`
 }
 
+// BoardDTO matches the API board response.
+type BoardDTO struct {
+	ID          string  `json:"id"`
+	WorkspaceID string  `json:"workspace_id"`
+	Name        string  `json:"name"`
+	Description *string `json:"description,omitempty"`
+	Color       *string `json:"color,omitempty"`
+	CreatedAt   string  `json:"created_at"`
+	UpdatedAt   string  `json:"updated_at"`
+}
+
 // SetupTestApp creates a Fiber app with all routes for testing.
 func SetupTestApp(t *testing.T) *TestApp {
 	t.Helper()
@@ -101,8 +112,11 @@ func SetupTestApp(t *testing.T) *TestApp {
 	queries := repository.New(pool)
 	authService := service.NewAuthService(queries, cfg)
 	workspaceService := service.NewWorkspaceService(queries)
+	boardService := service.NewBoardService(queries)
+
 	authHandler := handler.NewAuthHandler(authService, cfg)
 	workspaceHandler := handler.NewWorkspaceHandler(workspaceService)
+	boardHandler := handler.NewBoardHandler(boardService)
 
 	// Register custom slug validation for workspace handler
 	v := validator.New()
@@ -148,6 +162,14 @@ func SetupTestApp(t *testing.T) *TestApp {
 	workspaces.Get("/:id/members", workspaceHandler.ListMembers)
 	workspaces.Patch("/:id/members/:userId", workspaceHandler.UpdateMemberRole)
 	workspaces.Delete("/:id/members/:userId", workspaceHandler.RemoveMember)
+	workspaces.Get("/:workspaceId/boards", boardHandler.List)
+
+	// Board routes
+	boards := api.Group("/boards", middleware.AuthMiddleware(cfg.JWTAccessSecret))
+	boards.Post("/", boardHandler.Create)
+	boards.Get("/:id", boardHandler.Get)
+	boards.Put("/:id", boardHandler.Update)
+	boards.Delete("/:id", boardHandler.Delete)
 
 	return &TestApp{App: app, Cfg: cfg}
 }

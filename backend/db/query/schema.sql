@@ -73,3 +73,21 @@ ALTER TABLE "workspace_members" ADD CONSTRAINT "workspace_members_user_id_fkey"
 
 ALTER TABLE "workspace_members" ADD CONSTRAINT "workspace_members_workspace_id_fkey"
     FOREIGN KEY ("workspace_id") REFERENCES "workspaces"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- Boards table
+CREATE TABLE "boards" (
+    "id" UUID NOT NULL,
+    "workspace_id" UUID NOT NULL,
+    "name" VARCHAR(100) NOT NULL,
+    "description" TEXT,
+    "color" VARCHAR(7),
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMPTZ NOT NULL,
+
+    CONSTRAINT "boards_pkey" PRIMARY KEY ("id")
+);
+
+CREATE INDEX "boards_workspace_id_idx" ON "boards"("workspace_id");
+
+ALTER TABLE "boards" ADD CONSTRAINT "boards_workspace_id_fkey"
+    FOREIGN KEY ("workspace_id") REFERENCES "workspaces"("id") ON DELETE CASCADE ON UPDATE CASCADE;

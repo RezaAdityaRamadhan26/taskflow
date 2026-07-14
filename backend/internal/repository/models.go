@@ -56,6 +56,16 @@ func (ns NullRole) Value() (driver.Value, error) {
 	return string(ns.Role), nil
 }
 
+type Board struct {
+	ID          uuid.UUID      `json:"id"`
+	WorkspaceID uuid.UUID      `json:"workspace_id"`
+	Name        string         `json:"name"`
+	Description sql.NullString `json:"description"`
+	Color       sql.NullString `json:"color"`
+	CreatedAt   time.Time      `json:"created_at"`
+	UpdatedAt   time.Time      `json:"updated_at"`
+}
+
 type RefreshToken struct {
 	ID        uuid.UUID `json:"id"`
 	Token     string    `json:"token"`

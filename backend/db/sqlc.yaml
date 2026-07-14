@@ -25,3 +25,13 @@ sql:
               import: "database/sql"
               type: "NullString"
             nullable: true
+          - db_type: "varchar"
+            go_type:
+              import: "database/sql"
+              type: "NullString"
+            nullable: true
+          - column: "boards.color"
+            go_type:
+              import: "database/sql"
+              type: "NullString"
+            nullable: true

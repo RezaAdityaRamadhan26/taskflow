@@ -63,6 +63,7 @@ model Workspace {
 
   // Relations
   members WorkspaceMember[]
+  boards  Board[]
 
   @@map("workspaces")
 }
@@ -94,4 +95,23 @@ enum Role {
   OWNER
   ADMIN
   MEMBER
+}
+
+// ============================================
+// Board - A Kanban board within a workspace
+// ============================================
+model Board {
+  id          String   @id @default(uuid()) @db.Uuid
+  workspaceId String   @map("workspace_id") @db.Uuid
+  name        String   @db.VarChar(100)
+  description String?  @db.Text
+  color       String?  @db.VarChar(7) // HEX color code
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+
+  // Relations
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@map("boards")
 }
